@@ -1,1 +1,70 @@
+# =========================
+# ENV FILES
+# =========================
+
 .env
+.env.*
+
+# =========================
+# PYTHON
+# =========================
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# =========================
+# FASTAPI / UVICORN
+# =========================
+
+*.log
+
+# =========================
+# NODE / REACT
+# =========================
+
+node_modules/
+dist/
+build/
+
+# =========================
+# VSCODE
+# =========================
+
+.vscode/
+
+# =========================
+# OS FILES
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+# TESTS / CACHE
+# =========================
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# LOCK FILES
+# =========================
+
+# Mantén SOLO si quieren reproducibilidad exacta
+# Si sí quieren compartir versiones exactas:
+# uv.lock
+
+# =========================
+# TEMP FILES
+# =========================
+
+*.tmp
+*.temp
