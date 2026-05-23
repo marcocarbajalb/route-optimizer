@@ -18,7 +18,6 @@ The backend is responsible for:
 | FastAPI | REST API framework |
 | Python | Core backend language |
 | Pydantic | Request/response validation |
-| Google Maps API | Distance matrix generation |
 | Genetic Algorithm | Route optimization |
 
 ---
@@ -32,12 +31,25 @@ FastAPI Endpoint
       ↓
 Request Validation
       ↓
+Optimization Service
+      ↓
 Distance Matrix Generation
       ↓
 Genetic Algorithm
       ↓
 Optimized Route Response
 ```
+
+---
+
+# Optimization Workflow
+
+1. The client sends a route optimization request.
+2. The API validates the request body using Pydantic schemas.
+3. The optimization service coordinates the optimization pipeline.
+4. The matrix engine generates a distance matrix from input coordinates.
+5. The genetic algorithm evaluates candidate routes.
+6. The best route is returned as the optimization result.
 
 ---
 
@@ -105,10 +117,10 @@ Handles Firebase authentication and token validation.
 Responsible for generating and processing distance matrices.
 
 ### Responsibilities
-- coordinate pair generation
-- Google Maps API integration
-- adjacency matrix creation
-- distance calculations
+- Euclidean distance calculation
+- adjacency matrix generation
+- pairwise distance computation
+- route cost preparation
 
 ---
 
@@ -119,9 +131,9 @@ Contains the optimization algorithm implementation.
 ### Responsibilities
 - population generation
 - fitness evaluation
-- crossover operations
-- mutation operations
-- route optimization loop
+- route distance calculation
+- candidate route selection
+- optimization workflow
 
 ---
 
@@ -133,6 +145,7 @@ Acts as the orchestration layer between modules.
 - connect matrix engine with optimizer
 - coordinate backend workflow
 - format optimization results
+- manage optimization pipeline
 
 ---
 
@@ -144,6 +157,42 @@ Contains shared schemas and validation models.
 - request validation
 - response schemas
 - shared data contracts
+
+---
+
+# Current Optimization Flow
+
+The current implementation follows this execution flow:
+
+```text
+Request
+   ↓
+optimization_service.py
+   ↓
+distance_matrix.py
+   ↓
+genetic_algorithm.py
+   ↓
+Response
+```
+
+---
+
+# Genetic Algorithm Overview
+
+The current genetic optimization engine includes:
+
+- random population generation
+- route distance evaluation
+- best candidate selection
+- distance-based fitness comparison
+
+Planned additions:
+- crossover operators
+- mutation operators
+- generation evolution loop
+- elitism strategies
+- configurable optimization parameters
 
 ---
 
@@ -176,22 +225,10 @@ POST /optimize
 ```json
 {
   "locations": [
-    {
-      "id": "A",
-      "lat": 19.4326,
-      "lng": -99.1332
-    },
-    {
-      "id": "B",
-      "lat": 19.4978,
-      "lng": -99.1269
-    }
-  ],
-  "config": {
-    "population_size": 100,
-    "mutation_rate": 0.05,
-    "generations": 500
-  }
+    [0, 0],
+    [2, 3],
+    [5, 1]
+  ]
 }
 ```
 
@@ -201,11 +238,7 @@ POST /optimize
 
 ```json
 {
-  "best_route": {
-    "ordered_locations": ["A", "B"],
-    "total_distance_km": 12.4
-  },
-  "execution_time_seconds": 0.84
+  "route": [0, 1, 2]
 }
 ```
 
@@ -220,9 +253,7 @@ The backend uses Pydantic schemas for:
 
 Main schemas:
 - `LocationSchema`
-- `OptimizationConfigSchema`
 - `OptimizationRequestSchema`
-- `RouteSchema`
 - `OptimizationResponseSchema`
 
 ---
@@ -266,32 +297,37 @@ http://127.0.0.1:8000/docs
 - Backend modular architecture
 - Shared API schemas
 - FastAPI initialization
-- Basic optimization endpoint
+- Optimization workflow service
+- Euclidean distance matrix generation
+- Initial genetic optimization engine
 
 ---
 
 ## In Progress
 
-- Google Maps API integration
-- Distance matrix generation
-- Genetic algorithm implementation
+- Full genetic evolution cycle
+- Mutation and crossover operators
+- Request validation rules
 - Firebase authentication
+- Real-world map integrations
 
 ---
 
 # Optimization Constraints
 
 - Minimum locations: 2
-- Maximum locations: 15
 - Geographic coordinates required
-- Duplicate location IDs are not allowed
+- Duplicate locations are not allowed
+- Routes are currently optimized using Euclidean distance
 
 ---
 
 # Future Improvements
 
+- Google Maps API integration
 - Route visualization support
-- Caching layer for matrices
+- Multi-vehicle optimization
+- Traffic-aware routing
 - Performance optimization
-- Additional genetic operators
+- Advanced genetic operators
 - Better optimization heuristics
