@@ -32,6 +32,10 @@ def optimize_route(request: OptimizationRequestSchema) -> OptimizationResponseSc
         for i in best_route_indices
     ]
 
+    # Explicitly append the origin to the end of the list if it's a closed route
+    if request.config.is_closed_route and len(ordered_locations) > 1:
+        ordered_locations.append(ordered_locations[0])
+
     return OptimizationResponseSchema(
         route=RouteSchema(
             ordered_locations=ordered_locations,
