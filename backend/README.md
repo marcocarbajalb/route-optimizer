@@ -6,7 +6,7 @@ The backend is responsible for:
 - receiving optimization requests
 - validating location data
 - generating distance matrices
-- executing the genetic algorithm
+- executing the optimization workflow
 - returning optimized routes
 
 ---
@@ -38,6 +38,20 @@ Distance Matrix Generation
 Genetic Algorithm
       ↓
 Optimized Route Response
+```
+
+---
+
+# Layered Architecture
+
+```text
+API Layer
+    ↓
+Service Layer
+    ↓
+Matrix Engine
+    ↓
+Optimization Engine
 ```
 
 ---
@@ -130,8 +144,7 @@ Contains the optimization algorithm implementation.
 
 ### Responsibilities
 - population generation
-- fitness evaluation
-- route distance calculation
+- route distance evaluation
 - candidate route selection
 - optimization workflow
 
@@ -180,12 +193,12 @@ Response
 
 # Genetic Algorithm Overview
 
-The current genetic optimization engine includes:
+The current optimization engine includes:
 
-- random population generation
-- route distance evaluation
-- best candidate selection
-- distance-based fitness comparison
+- random route population generation
+- Euclidean route distance calculation
+- candidate route evaluation
+- best route selection
 
 Planned additions:
 - crossover operators
@@ -225,9 +238,21 @@ POST /optimize
 ```json
 {
   "locations": [
-    [0, 0],
-    [2, 3],
-    [5, 1]
+    {
+      "id": "A",
+      "lat": 14.6349,
+      "lng": -90.5069
+    },
+    {
+      "id": "B",
+      "lat": 14.6248,
+      "lng": -90.5328
+    },
+    {
+      "id": "C",
+      "lat": 14.6111,
+      "lng": -90.5133
+    }
   ]
 }
 ```
@@ -238,7 +263,14 @@ POST /optimize
 
 ```json
 {
-  "route": [0, 1, 2]
+  "route": {
+    "ordered_locations": [
+      "C",
+      "A",
+      "B"
+    ],
+    "total_distance_km": 0
+  }
 }
 ```
 
@@ -255,6 +287,7 @@ Main schemas:
 - `LocationSchema`
 - `OptimizationRequestSchema`
 - `OptimizationResponseSchema`
+- `RouteSchema`
 
 ---
 
@@ -299,7 +332,8 @@ http://127.0.0.1:8000/docs
 - FastAPI initialization
 - Optimization workflow service
 - Euclidean distance matrix generation
-- Initial genetic optimization engine
+- Initial route optimization workflow integration
+- Initial genetic search implementation
 
 ---
 
@@ -307,7 +341,6 @@ http://127.0.0.1:8000/docs
 
 - Full genetic evolution cycle
 - Mutation and crossover operators
-- Request validation rules
 - Firebase authentication
 - Real-world map integrations
 
@@ -316,8 +349,9 @@ http://127.0.0.1:8000/docs
 # Optimization Constraints
 
 - Minimum locations: 2
+- Maximum locations per request: 15
 - Geographic coordinates required
-- Duplicate locations are not allowed
+- Duplicate location IDs are not allowed
 - Routes are currently optimized using Euclidean distance
 
 ---

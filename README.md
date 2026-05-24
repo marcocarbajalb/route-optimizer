@@ -2,7 +2,7 @@
 
 > Developed by Marco Carbajal (23025), Carlos Aldana (23394), Diego Monroy (23394), and Carlos Angel (23010)
 
-Route Optimizer is a web platform that calculates the shortest possible route between multiple geographic locations using Google Maps APIs and a genetic algorithm approach to solve the Traveling Salesman Problem (TSP).
+Route Optimizer is a web platform that calculates optimized routes between multiple geographic locations using a modular backend architecture and a genetic algorithm approach to solve the Traveling Salesman Problem (TSP).
 
 The system is designed for small-scale route optimization scenarios with a minimum of 2 and a maximum of 15 locations.
 
@@ -11,12 +11,13 @@ The system is designed for small-scale route optimization scenarios with a minim
 # Features
 
 - Route optimization using Genetic Algorithms
-- Google Maps Distance Matrix integration
+- Euclidean distance matrix generation
 - Interactive frontend built with React
 - Backend API built with FastAPI
 - Firebase Authentication
-- Real-time route validation and optimization
-- Modular architecture for independent development
+- Request and response validation using Pydantic
+- Modular optimization architecture
+- Structured optimization workflow
 
 ---
 
@@ -29,7 +30,9 @@ Firebase Authentication
         ↓
 FastAPI Backend
         ↓
-Google Maps Distance Matrix API
+Optimization Service
+        ↓
+Distance Matrix Engine
         ↓
 Genetic Algorithm Optimizer
         ↓
@@ -45,8 +48,9 @@ Optimized Route Response
 | Frontend | React + Vite |
 | Backend | FastAPI |
 | Optimization | Genetic Algorithm |
-| Maps API | Google Maps Distance Matrix API |
+| Distance Engine | Euclidean Distance Matrix |
 | Authentication | Firebase Auth |
+| Validation | Pydantic |
 | Language | Python + JavaScript |
 
 ---
@@ -95,15 +99,23 @@ route-optimizer/
 - Backend modular structure
 - Shared API schemas
 - FastAPI initialization
-- Basic optimization endpoint
+- Optimization workflow integration
+- Distance matrix generation
+- Optimization service orchestration
+- Initial genetic search implementation
+- Structured request and response schemas
 - Project diagrams
+
+---
 
 ## In Progress
 
+- Full genetic evolution cycle
+- Mutation and crossover operators
 - Google Maps API integration
-- Distance matrix generation
-- Genetic algorithm implementation
 - Frontend optimization interface
+- Firebase authentication integration
+- Real-world route visualization
 
 ---
 
@@ -118,12 +130,68 @@ FastAPI Endpoint
     ↓
 Request Validation
     ↓
+Optimization Service
+    ↓
 Distance Matrix Generation
     ↓
 Genetic Algorithm Execution
     ↓
 Optimized Route Response
 ```
+
+---
+
+# Current Optimization Status
+
+The current optimization engine includes:
+
+- random route population generation
+- Euclidean distance evaluation
+- candidate route selection
+- best-route optimization
+
+Planned improvements:
+
+- crossover operators
+- mutation operators
+- multi-generation evolution
+- elitism strategies
+- configurable optimization parameters
+- advanced optimization heuristics
+
+---
+
+# Optimization Constraints
+
+- Minimum locations: 2
+- Maximum locations: 15
+- Geographic coordinates are required
+- Duplicate location IDs are not allowed
+- Routes are currently optimized using Euclidean distance
+
+---
+
+# API Overview
+
+The backend currently exposes:
+
+## Root Endpoint
+
+```http
+GET /
+```
+
+Returns backend status information.
+
+---
+
+## Optimization Endpoint
+
+```http
+POST /optimize
+```
+
+Executes the optimization workflow and returns an optimized route response.
 
 ---
 

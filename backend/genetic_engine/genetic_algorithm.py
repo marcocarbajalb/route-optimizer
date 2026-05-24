@@ -1,7 +1,10 @@
 import random
 
 
-def calculate_route_distance(route, distance_matrix):
+def calculate_route_distance(
+    route: list[int],
+    distance_matrix: list[list[float]]
+) -> float:
     total_distance = 0.0
 
     for i in range(len(route) - 1):
@@ -12,7 +15,10 @@ def calculate_route_distance(route, distance_matrix):
     return total_distance
 
 
-def generate_population(population_size, number_of_locations):
+def generate_population(
+    population_size: int,
+    number_of_locations: int
+) -> list[list[int]]:
     population = []
 
     base_route = list(range(number_of_locations))
@@ -25,7 +31,10 @@ def generate_population(population_size, number_of_locations):
     return population
 
 
-def select_best(population, distance_matrix):
+def select_best(
+    population: list[list[int]],
+    distance_matrix: list[list[float]]
+) -> list[int]:
     best_route = min(
         population,
         key=lambda route: calculate_route_distance(
@@ -37,7 +46,9 @@ def select_best(population, distance_matrix):
     return best_route
 
 
-def solve(distance_matrix):
+def solve(
+    distance_matrix: list[list[float]]
+) -> list[int]:
     population_size = 100
     number_of_locations = len(distance_matrix)
 

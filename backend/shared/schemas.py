@@ -117,10 +117,4 @@ class RouteSchema(BaseModel):
 # =========================
 
 class OptimizationResponseSchema(BaseModel):
-    best_route: RouteSchema
-
-    execution_time_seconds: float = Field(
-        ...,
-        ge=0,
-        description="Backend execution time"
-    )
+    route: RouteSchema

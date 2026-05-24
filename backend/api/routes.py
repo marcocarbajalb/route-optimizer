@@ -1,12 +1,18 @@
 from fastapi import APIRouter
-from shared.schemas import OptimizationRequestSchema
+
+from shared.schemas import (
+    OptimizationResponseSchema,
+    OptimizationRequestSchema
+)
+
+from services.optimization_service import optimize_route
 
 router = APIRouter()
 
 
-@router.post("/optimize")
+@router.post(
+    "/optimize",
+    response_model=OptimizationResponseSchema
+)
 def optimize(data: OptimizationRequestSchema):
-    return {
-        "message": "optimization request received",
-        "locations_received": len(data.locations)
-    }
+    return optimize_route(data)
