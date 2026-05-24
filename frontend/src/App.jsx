@@ -62,7 +62,9 @@ export default function App() {
           lat: d.lat,
           lng: d.lng
         })),
-        is_closed: formData.isClosedRoute 
+        config: {
+          is_closed_route: formData.isClosedRoute 
+        }
       };
 
       setSubmittedLocations(payload.locations);
