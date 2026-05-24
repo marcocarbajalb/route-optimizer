@@ -2,37 +2,87 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
 import { useLoadScript } from '@react-google-maps/api';
+import axios from 'axios';
 
 import Login from './components/Login';
 import DestinationForm from './components/DestinationForm';
 import MapComponent from './components/MapComponent';
 
-// Constante fuera del componente para evitar re-renders innecesarios
+// Constant outside the component to avoid unnecessary re-renders
 const libraries = ['places'];
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // New states to handle the API request and its response
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [routeData, setRouteData] = useState(null);
 
-  // Cargar el script de Google Maps de forma segura
+  // Load Google Maps script securely
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries: libraries,
   });
 
   useEffect(() => {
+    // Listen for authentication state changes
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setRouteData(null); // Clear data on logout
     } catch (error) {
       console.error("Error signing out: ", error);
+    }
+  };
+
+  // Handle the form submission and API call
+  const handleOptimizeRoute = async (formData) => {
+    if (!user) return;
+
+    setIsCalculating(true);
+    try {
+      // 1. Get the Firebase JWT token from the current user
+      const token = await user.getIdToken();
+
+      // 2. Format the payload for the FastAPI backend
+      const payload = {
+        locations: formData.destinations.map(d => ({
+          id: d.id,
+          name: d.value,
+          lat: d.lat,
+          lng: d.lng
+        })),
+        is_closed: formData.isClosedRoute 
+      };
+
+      // 3. Make the POST request to the local FastAPI server
+      // NOTE: Ensure your FastAPI server is running on port 8000
+      const response = await axios.post('http://localhost:8000/optimize', payload, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // 4. Save the result and log it for debugging
+      console.log("Optimization Result from Backend:", response.data);
+      setRouteData(response.data);
+      alert("Route successfully optimized! Check the console for details.");
+
+    } catch (error) {
+      console.error("Error optimizing route:", error);
+      alert(error.response?.data?.detail || "An error occurred while connecting to the backend.");
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -41,7 +91,7 @@ export default function App() {
   }
 
   if (loadError) {
-    return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Error al cargar Google Maps. Revisa tu API Key en el archivo .env</div>;
+    return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Error loading Google Maps. Check your API Key in the .env file.</div>;
   }
 
   if (!user) {
@@ -61,22 +111,25 @@ export default function App() {
       </header>
 
       <main style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-        {/* Columna Izquierda: Formulario */}
+        {/* Left Column: Form */}
         <div style={{ flex: '1' }}>
           <DestinationForm 
-            onSubmit={(data) => console.log("Form Data:", data)} 
-            isLoading={false} 
+            onSubmit={handleOptimizeRoute} 
+            isLoading={isCalculating} 
           />
         </div>
         
-        {/* Columna Derecha: Mapa Real */}
+        {/* Right Column: Actual Map */}
         <div style={{ flex: '2', height: '500px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           {!isLoaded ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#eaeaea' }}>
-              Cargando mapa...
+              Loading map...
             </div>
           ) : (
-            <MapComponent />
+            <>
+              {/* Pass the optimized route data to the map component */}
+              <MapComponent routeData={routeData} />
+            </>
           )}
         </div>
       </main>

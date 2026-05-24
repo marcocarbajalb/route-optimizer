@@ -46,7 +46,7 @@ export default function DestinationForm({ onSubmit, isLoading }) {
         setDestinations(prev => prev.map(dest => 
           dest.id === id ? { 
             ...dest, 
-            value: place.formatted_address || place.name,
+            value: place.name || place.formatted_address,
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng()
           } : dest
