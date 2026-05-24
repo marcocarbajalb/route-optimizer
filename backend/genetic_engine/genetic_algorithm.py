@@ -16,20 +16,23 @@ def calculate_route_distance(route: List[int], distance_matrix: List[List[float]
 
 def order_crossover(parent1: List[int], parent2: List[int]) -> List[int]:
     """
-    Performs Order Crossover (OX1) for permutation-based chromosomes.
+    Performs Order Crossover (OX1) protecting the origin node (index 0).
     Ensures that no locations are duplicated or omitted in the child route.
     """
     size = len(parent1)
-    start, end = sorted([random.randint(0, size - 1), random.randint(0, size - 1)])
+    
+    # Protect origin by starting random selection from index 1
+    start, end = sorted([random.randint(1, size - 1), random.randint(1, size - 1)])
     
     child = [-1] * size
+    child[0] = parent1[0] # Keep the origin fixed
     
     # Copy a random sub-segment from parent1
     child[start:end + 1] = parent1[start:end + 1]
     
-    # Fill the remaining positions with elements from parent2, preserving their relative order
-    p2_idx = 0
-    for i in range(size):
+    # Fill the remaining positions with elements from parent2
+    p2_idx = 1
+    for i in range(1, size):
         if child[i] == -1:
             while parent2[p2_idx] in child:
                 p2_idx += 1
@@ -38,11 +41,14 @@ def order_crossover(parent1: List[int], parent2: List[int]) -> List[int]:
     return child
 
 def mutate(route: List[int], mutation_rate: float) -> List[int]:
-    """Applies Swap Mutation by randomly swapping two locations in the route."""
+    """Applies Swap Mutation protecting the origin node."""
     mutated_route = route.copy()
-    if random.random() < mutation_rate:
-        idx1, idx2 = random.sample(range(len(route)), 2)
+    
+    # Ensure we have at least 2 destinations to swap (excluding origin)
+    if len(route) > 2 and random.random() < mutation_rate:
+        idx1, idx2 = random.sample(range(1, len(route)), 2)
         mutated_route[idx1], mutated_route[idx2] = mutated_route[idx2], mutated_route[idx1]
+        
     return mutated_route
 
 def solve(
@@ -55,13 +61,17 @@ def solve(
     """Main Genetic Algorithm execution loop."""
     num_locations = len(distance_matrix)
     
-    # 1. Initialize random population
-    base_route = list(range(num_locations))
+    # Handle edge case for single location routes
+    if num_locations <= 1:
+        return list(range(num_locations)), 0.0
+    
+    # 1. Initialize random population (Keeping origin at index 0)
+    base_route = list(range(1, num_locations))
     population = []
     for _ in range(population_size):
         individual = base_route.copy()
         random.shuffle(individual)
-        population.append(individual)
+        population.append([0] + individual)
         
     best_overall_route = []
     best_overall_distance = float('inf')
@@ -77,17 +87,20 @@ def solve(
             best_overall_distance = current_best_distance
             best_overall_route = population[0].copy()
             
-        # Elitism: carry over the top 20% of the population directly to the next generation
-        elite_count = max(2, int(population_size * 0.2))
+        # Elitism: Dramatically reduced to prevent premature convergence (Top 2 individuals only)
+        elite_count = 2
         next_generation = population[:elite_count]
         
-        # 3. Crossover and Mutation to fill the rest of the generation
+        # 3. Crossover and Mutation
         while len(next_generation) < population_size:
-            # Select parents from the better half of the population (Tournament-style bias)
-            parent1 = random.choice(population[:int(population_size * 0.5)])
-            parent2 = random.choice(population[:int(population_size * 0.5)])
+            # Tournament Selection (k=3)
+            parents = []
+            for _ in range(2):
+                tournament = random.sample(population, 3)
+                tournament.sort(key=lambda r: calculate_route_distance(r, distance_matrix, is_closed_route))
+                parents.append(tournament[0])
             
-            child = order_crossover(parent1, parent2)
+            child = order_crossover(parents[0], parents[1])
             child = mutate(child, mutation_rate)
             
             next_generation.append(child)
@@ -95,4 +108,3 @@ def solve(
         population = next_generation
         
     return best_overall_route, best_overall_distance
-    
