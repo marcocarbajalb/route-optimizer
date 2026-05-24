@@ -69,3 +69,8 @@ htmlcov/
 
 *.tmp
 *.temp
+
+# =========================
+# FIREBASE CREDENTIALS
+# =========================
+firebase-credentials.json
