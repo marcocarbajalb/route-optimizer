@@ -115,26 +115,59 @@ export default function App() {
         </div>
       </header>
 
-      <main style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-        {/* Left Column: Form */}
-        <div style={{ flex: '1' }}>
+      <main style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        
+        {/* Left Column: Form and Results */}
+        {/* FIX: Ancho fijo de 380px para que no crezca horizontalmente y empuje al mapa */}
+        <div style={{ flex: '0 0 380px', display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
           <DestinationForm 
             onSubmit={handleOptimizeRoute} 
             isLoading={isCalculating} 
           />
+          
+          {/* Render Route Details if available */}
+          {routeData && routeData.route && (
+            <div style={{ 
+              padding: '20px', 
+              backgroundColor: '#f0f8ff', 
+              borderRadius: '8px', 
+              border: '1px solid #cce5ff', 
+              textAlign: 'left', 
+              color: '#000',
+              maxHeight: '350px', /* Limita la altura vertical */
+              overflowY: 'auto',  /* Agrega scroll si es muy largo */
+              boxSizing: 'border-box',
+              width: '100%'       /* Limita el crecimiento horizontal */
+            }}>
+              <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Optimization Results</h3>
+              
+              <p style={{ fontWeight: 'bold', fontSize: '18px', margin: '0 0 15px 0' }}>
+                Total Distance: {routeData.route.total_distance_km} km
+              </p>
+              
+              <ol style={{ paddingLeft: '20px', margin: 0, lineHeight: '1.6' }}>
+                {routeData.route.ordered_locations.map((locId, index) => {
+                  const loc = submittedLocations.find(l => l.id === locId);
+                  return (
+                    <li key={`${locId}-${index}`}>
+                      {loc ? loc.name : locId}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
         </div>
         
         {/* Right Column: Actual Map */}
-        <div style={{ flex: '2', height: '500px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
+        {/* FIX: flex 1 le dice al mapa que ocupe todo el espacio que sobra a la derecha */}
+        <div style={{ flex: '1', minWidth: '400px', height: '600px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           {!isLoaded ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#eaeaea' }}>
               Loading map...
             </div>
           ) : (
-            <>
-              {/* Pass the optimized route data to the map component */}
-              <MapComponent routeData={routeData} locations={submittedLocations} />
-            </>
+            <MapComponent routeData={routeData} locations={submittedLocations} />
           )}
         </div>
       </main>

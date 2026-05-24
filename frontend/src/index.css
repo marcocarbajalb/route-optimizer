@@ -109,3 +109,33 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* =========================================
+   Google Places Autocomplete Overrides
+   ========================================= */
+.pac-container {
+  min-width: 400px !important; 
+  font-family: var(--sans);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  white-space: normal !important; /* Prevent text truncation */
+  z-index: 10000 !important; /* FIX: Bring dropdown above the map */
+  background-color: #ffffff !important; /* Force white background */
+}
+
+.pac-item {
+  padding: 8px 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #333333 !important; /* FIX: Force dark text */
+}
+
+.pac-item-query {
+  font-size: 16px;
+  color: #000000 !important; /* FIX: Force black text for the matched query */
+}
+
+.pac-matched {
+  color: #000000 !important;
+  font-weight: bold;
+}

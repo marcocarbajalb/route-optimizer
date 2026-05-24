@@ -55,22 +55,53 @@ export default function DestinationForm({ onSubmit, isLoading }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Strict validation: Ensure all fields have valid Google coordinates
-    const isValid = destinations.every(d => d.lat !== null && d.lng !== null);
-    if (!isValid) {
-      alert("Please select all destinations using the Google Autocomplete suggestions.");
+    // Initialize Geocoder for free-text fallback
+    const geocoder = new window.google.maps.Geocoder();
+    let updatedDestinations = [...destinations];
+    let geocodeError = false;
+
+    for (let i = 0; i < updatedDestinations.length; i++) {
+      const dest = updatedDestinations[i];
+      
+      // If the destination has text but no coordinates (user didn't click a suggestion)
+      if (dest.value && (dest.lat === null || dest.lng === null)) {
+        try {
+          // Append "Guatemala" to provide context for the search
+          const results = await geocoder.geocode({ address: `${dest.value}, Guatemala` });
+          
+          if (results.results && results.results.length > 0) {
+            const location = results.results[0].geometry.location;
+            updatedDestinations[i].lat = location.lat();
+            updatedDestinations[i].lng = location.lng();
+            // We intentionally keep dest.value as typed by the user to display 
+            // the short place name rather than overriding it with a long formatted address.
+          } else {
+            geocodeError = true;
+          }
+        } catch (error) {
+          console.error("Error geocoding free text:", error);
+          geocodeError = true;
+        }
+      }
+    }
+
+    // Validate that all fields have valid text and coordinates
+    const isValid = updatedDestinations.every(d => d.value.trim() !== '' && d.lat !== null && d.lng !== null);
+    if (!isValid || geocodeError) {
+      alert("Could not find coordinates for some locations. Please be more specific.");
       return;
     }
 
-    // If validation passes, submit the data
-    onSubmit({ destinations, isClosedRoute });
+    // If validation passes, update state and submit
+    setDestinations(updatedDestinations);
+    onSubmit({ destinations: updatedDestinations, isClosedRoute });
   };
 
   return (
-    <div style={{ backgroundColor: '#f5f5f5', padding: '20px', borderRadius: '8px', maxWidth: '400px' }}>
+    <div style={{ backgroundColor: '#f5f5f5', padding: '20px', borderRadius: '8px', width: '100%', boxSizing: 'border-box'}}>
       <h2 style={{ marginTop: 0 }}>Plan Your Route</h2>
       
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
