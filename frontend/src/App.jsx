@@ -18,6 +18,7 @@ export default function App() {
   // New states to handle the API request and its response
   const [isCalculating, setIsCalculating] = useState(false);
   const [routeData, setRouteData] = useState(null);
+  const [submittedLocations, setSubmittedLocations] = useState([]);
 
   // Load Google Maps script securely
   const { isLoaded, loadError } = useLoadScript({
@@ -63,6 +64,8 @@ export default function App() {
         })),
         is_closed: formData.isClosedRoute 
       };
+
+      setSubmittedLocations(payload.locations);
 
       // 3. Make the POST request to the local FastAPI server
       // NOTE: Ensure your FastAPI server is running on port 8000
@@ -128,7 +131,7 @@ export default function App() {
           ) : (
             <>
               {/* Pass the optimized route data to the map component */}
-              <MapComponent routeData={routeData} />
+              <MapComponent routeData={routeData} locations={submittedLocations} />
             </>
           )}
         </div>
