@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
 import Login from './components/Login';
+import DestinationForm from './components/DestinationForm';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -48,10 +49,19 @@ export default function App() {
         </div>
       </header>
 
-      <main>
-        <p>Welcome! Here is where we will integrate the Google Maps component and the destination form.</p>
+      <main style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+        {/* Left column: Form */}
+        <div style={{ flex: '1' }}>
+          <DestinationForm 
+            onSubmit={(data) => console.log("Form Data:", data)} 
+            isLoading={false} 
+          />
+        </div>
         
-        {/* We will build the Map and Form components next */}
+        {/* Right column: Map (Coming soon) */}
+        <div style={{ flex: '2', backgroundColor: '#eaeaea', height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}>
+          <p style={{ color: '#666' }}>Google Map will be rendered here</p>
+        </div>
       </main>
     </div>
   );
