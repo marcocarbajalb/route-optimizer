@@ -41,8 +41,7 @@ export default function DestinationForm({ onSubmit, isLoading }) {
     if (autocomplete) {
       const place = autocomplete.getPlace();
       
-      // Verify that the selected place has valid coordinates
-      if (place.geometry && place.geometry.location) {
+      if (place && place.geometry && place.geometry.location) {
         setDestinations(prev => prev.map(dest => 
           dest.id === id ? { 
             ...dest, 
@@ -58,46 +57,62 @@ export default function DestinationForm({ onSubmit, isLoading }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Initialize Geocoder for free-text fallback
     const geocoder = new window.google.maps.Geocoder();
-    let updatedDestinations = [...destinations];
-    let geocodeError = false;
+    let hasGeocodingError = false;
 
-    for (let i = 0; i < updatedDestinations.length; i++) {
-      const dest = updatedDestinations[i];
-      
-      // If the destination has text but no coordinates (user didn't click a suggestion)
-      if (dest.value && (dest.lat === null || dest.lng === null)) {
+    const resolvedDestinations = await Promise.all(
+      destinations.map(async (dest) => {
+        // 1. If it already has coordinates, return it as is
+        if (dest.lat !== null && dest.lng !== null) {
+          return dest;
+        }
+
+        // 2. Skip if the field is empty
+        if (!dest.value.trim()) return dest;
+
+        // 3. Fallback: Request coordinates from Google Geocoding API
         try {
-          // Append "Guatemala" to provide context for the search
-          const results = await geocoder.geocode({ address: `${dest.value}, Guatemala` });
-          
-          if (results.results && results.results.length > 0) {
-            const location = results.results[0].geometry.location;
-            updatedDestinations[i].lat = location.lat();
-            updatedDestinations[i].lng = location.lng();
-            // We intentionally keep dest.value as typed by the user to display 
-            // the short place name rather than overriding it with a long formatted address.
+          const response = await geocoder.geocode({
+            address: dest.value,
+            componentRestrictions: { country: "gt" }
+          });
+
+          if (response.results && response.results.length > 0) {
+            const bestMatch = response.results[0];
+            
+            // Prevent Google from returning the entire country for gibberish text
+            if (bestMatch.types.includes("country")) {
+              alert(`No specific coordinates found for: "${dest.value}". Please be more specific.`);
+              hasGeocodingError = true;
+              return dest;
+            }
+
+            return {
+              ...dest,
+              lat: bestMatch.geometry.location.lat(),
+              lng: bestMatch.geometry.location.lng()
+            };
           } else {
-            geocodeError = true;
+            alert(`No coordinates found for: "${dest.value}". Please try to be more specific.`);
+            hasGeocodingError = true;
+            return dest;
           }
         } catch (error) {
-          console.error("Error geocoding free text:", error);
-          geocodeError = true;
+          console.error("Geocoding fallback error:", error);
+          alert(`Error searching for address: "${dest.value}".`);
+          hasGeocodingError = true;
+          return dest;
         }
-      }
-    }
+      })
+    );
 
-    // Validate that all fields have valid text and coordinates
-    const isValid = updatedDestinations.every(d => d.value.trim() !== '' && d.lat !== null && d.lng !== null);
-    if (!isValid || geocodeError) {
-      alert("Could not find coordinates for some locations. Please be more specific.");
-      return;
-    }
+    if (hasGeocodingError) return;
 
-    // If validation passes, update state and submit
-    setDestinations(updatedDestinations);
-    onSubmit({ destinations: updatedDestinations, isClosedRoute });
+    // Update the form state preserving the custom text inputs
+    setDestinations(resolvedDestinations);
+
+    // Submit the fully resolved data to the parent component (App.jsx -> FastAPI)
+    onSubmit({ destinations: resolvedDestinations, isClosedRoute });
   };
 
   return (

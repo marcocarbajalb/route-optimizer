@@ -85,7 +85,27 @@ export default function App() {
 
     } catch (error) {
       console.error("Error optimizing route:", error);
-      alert(error.response?.data?.detail || "An error occurred while connecting to the backend.");
+      
+      let errorMessage = "An error occurred while connecting to the backend.";
+      
+      // Handle FastAPI's error response
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        
+        // If it's a Pydantic validation error (array)
+        if (Array.isArray(detail) && detail.length > 0) {
+          // Extract exactly the "Value error..." message you programmed
+          errorMessage = detail[0].msg.replace("Value error, ", ""); 
+        } 
+        // If it's a standard manually raised HTTPException (string)
+        else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
+      // Now the alert will show the actual text
+      alert(errorMessage);
+      
     } finally {
       setIsCalculating(false);
     }
