@@ -1,26 +1,85 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from api.routes import router
+"""Firebase Cloud Function entry point for the Route Optimizer.
 
-app = FastAPI(
-    title="Route Optimizer API",
-    version="1.0.0"
+This module exposes a single HTTP-triggered function that receives
+destination coordinates and a calculation mode, runs the genetic
+algorithm, and returns the optimized route.
+"""
+import json
+
+from firebase_functions import https_fn, options
+from firebase_admin import initialize_app
+from pydantic import ValidationError
+
+from shared.schemas import OptimizationRequestSchema
+from services.optimization_service import optimize_route
+from auth.firebase_auth import verify_firebase_token
+from security.ip_filter import is_ip_allowed, get_client_ip
+
+# Firebase Admin SDK uses the runtime service account automatically.
+initialize_app()
+
+# CORS: restrict to the deployed frontend origin in production.
+_CORS = options.CorsOptions(
+    cors_origins=["http://localhost:5173"],
+    cors_methods=["POST", "OPTIONS"],
 )
 
-# Configuración de CORS para permitir peticiones desde tu frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # El puerto de tu entorno de Vite
-    allow_credentials=True,
-    allow_methods=["*"],  # Permite todos los métodos (GET, POST, OPTIONS, etc.)
-    allow_headers=["*"],  # Permite todos los headers (incluyendo tu token de Firebase)
+
+@https_fn.on_request(
+    cors=_CORS,
+    region="us-central1",
+    secrets=["GOOGLE_MAPS_API_KEY"],
 )
+def optimize(req: https_fn.Request) -> https_fn.Response:
+    """HTTP entry point: validates, authorizes, and runs the optimization."""
 
-app.include_router(router)
+    # 1. Method guard
+    if req.method != "POST":
+        return https_fn.Response("Method Not Allowed", status=405)
 
+    # 2. IP allowlist enforcement (PDF requirement)
+    client_ip = get_client_ip(req)
+    if not is_ip_allowed(client_ip):
+        return https_fn.Response(
+            json.dumps({"error": "Forbidden: IP address not allowed"}),
+            status=403,
+            mimetype="application/json",
+        )
 
-@app.get("/")
-def root():
-    return {
-        "status": "backend running"
-    }
+    # 3. Firebase Authentication enforcement
+    auth_header = req.headers.get("Authorization", "")
+    if not verify_firebase_token(auth_header):
+        return https_fn.Response(
+            json.dumps({"error": "Unauthorized: invalid or missing token"}),
+            status=401,
+            mimetype="application/json",
+        )
+
+    # 4. Request body validation via Pydantic
+    try:
+        body = req.get_json(silent=True)
+        if body is None:
+            raise ValueError("Request body must be valid JSON")
+        request_data = OptimizationRequestSchema(**body)
+    except (ValidationError, ValueError) as exc:
+        return https_fn.Response(
+            json.dumps({"error": str(exc)}),
+            status=422,
+            mimetype="application/json",
+        )
+
+    # 5. Run optimization pipeline
+    try:
+        result = optimize_route(request_data)
+    except Exception as exc:  # noqa: BLE001 - surface upstream API failures
+        return https_fn.Response(
+            json.dumps({"error": f"Optimization failed: {exc}"}),
+            status=502,
+            mimetype="application/json",
+        )
+
+    return https_fn.Response(
+        result.model_dump_json(),
+        status=200,
+        mimetype="application/json",
+    )

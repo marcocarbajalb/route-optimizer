@@ -1,35 +1,21 @@
-import os
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import firebase_admin
-from firebase_admin import credentials, auth
-from dotenv import load_dotenv
+"""Firebase Authentication token verification."""
+from firebase_admin import auth
 
-load_dotenv()
 
-# Initialize Firebase Admin SDK
-cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
-if cred_path and not firebase_admin._apps:
-    try:
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
-    except Exception as e:
-        print(f"Error initializing Firebase: {e}")
+def verify_firebase_token(authorization_header: str) -> dict | None:
+    """Verifies a Firebase ID token from a raw 'Authorization' header.
 
-security = HTTPBearer()
-
-def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    Returns the decoded token payload if valid, otherwise None.
+    Expected header format: 'Bearer <id_token>'.
     """
-    Verifies the Firebase JWT token provided in the Authorization header.
-    Returns the decoded token payload if valid.
-    """
-    token = credentials.credentials
+    if not authorization_header.startswith("Bearer "):
+        return None
+
+    id_token = authorization_header.split("Bearer ", 1)[1].strip()
+    if not id_token:
+        return None
+
     try:
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return auth.verify_id_token(id_token)
+    except Exception:  # noqa: BLE001 - any failure means an invalid token
+        return None
