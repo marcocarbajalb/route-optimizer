@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
 import { useLoadScript } from '@react-google-maps/api';
-import axios from 'axios';
+import { optimizeRoute } from './services/cloudFunction';
 
 import Login from './components/Login';
 import DestinationForm from './components/DestinationForm';
@@ -51,61 +51,32 @@ export default function App() {
 
     setIsCalculating(true);
     try {
-      // 1. Get the Firebase JWT token from the current user
+      // 1. Get the Firebase ID token from the current user
       const token = await user.getIdToken();
 
-      // 2. Format the payload for the FastAPI backend
+      // 2. Build the payload for the Cloud Function
       const payload = {
-        locations: formData.destinations.map(d => ({
+        locations: formData.destinations.map((d) => ({
           id: d.id,
           name: d.value,
           lat: d.lat,
-          lng: d.lng
+          lng: d.lng,
         })),
         config: {
-          is_closed_route: formData.isClosedRoute 
-        }
+          is_closed_route: formData.isClosedRoute,
+        },
       };
 
       setSubmittedLocations(payload.locations);
 
-      // 3. Make the POST request to the local FastAPI server
-      // NOTE: Ensure your FastAPI server is running on port 8000
-      const response = await axios.post('http://localhost:8000/optimize', payload, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // 3. Call the deployed Cloud Function via the service layer
+      const data = await optimizeRoute(payload, token);
 
-      // 4. Save the result and log it for debugging
-      console.log("Optimization Result from Backend:", response.data);
-      setRouteData(response.data);
-      alert("Route successfully optimized! Check the console for details.");
-
+      // 4. Save the result
+      setRouteData(data);
     } catch (error) {
-      console.error("Error optimizing route:", error);
-      
-      let errorMessage = "An error occurred while connecting to the backend.";
-      
-      // Handle FastAPI's error response
-      if (error.response?.data?.detail) {
-        const detail = error.response.data.detail;
-        
-        // If it's a Pydantic validation error (array)
-        if (Array.isArray(detail) && detail.length > 0) {
-          // Extract exactly the "Value error..." message you programmed
-          errorMessage = detail[0].msg.replace("Value error, ", ""); 
-        } 
-        // If it's a standard manually raised HTTPException (string)
-        else if (typeof detail === 'string') {
-          errorMessage = detail;
-        }
-      }
-      
-      // Now the alert will show the actual text
-      alert(errorMessage);
-      
+      // The service already normalized the message for display
+      alert(error.message);
     } finally {
       setIsCalculating(false);
     }
