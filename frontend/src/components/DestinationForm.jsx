@@ -2,6 +2,58 @@ import { useState, useRef } from 'react';
 import { Autocomplete } from '@react-google-maps/api';
 import { findDestinationsOverRadius, MAX_RADIUS_KM } from '../utils/distance';
 
+// Address component types that carry useful "city / zone" context, in order
+// of preference. We pick the first one present to keep the label concise.
+const CONTEXT_TYPES = [
+  'sublocality',
+  'sublocality_level_1',
+  'locality',
+  'administrative_area_level_2',
+  'administrative_area_level_1',
+];
+
+/**
+ * Extracts a single concise context string (zone or city) from a place's
+ * address components, e.g. "Zona 16" or "Ciudad de Guatemala".
+ */
+function extractContext(addressComponents = []) {
+  for (const type of CONTEXT_TYPES) {
+    const match = addressComponents.find((c) => c.types.includes(type));
+    if (match) return match.long_name;
+  }
+  return null;
+}
+
+/**
+ * Builds a readable, distinguishable label for a place picked from the list.
+ *
+ * Goal: "Name; City/Zone" so the final list is unambiguous.
+ * - If the place name is already part of the address (e.g. a street), the
+ *   name would just duplicate the address, so we show the address alone.
+ * - Otherwise we append a single context fragment (zone/city) to the name.
+ */
+function buildLocationLabel(place) {
+  const name = place.name?.trim();
+  const address = place.formatted_address?.trim();
+
+  // No name at all: fall back to the formatted address.
+  if (!name) return address || '';
+
+  // No address to enrich with: use the bare name.
+  if (!address) return name;
+
+  // The name is already contained in the address (typical for streets, where
+  // name === address line). Showing both would be redundant, so prefer the
+  // address, which carries more context.
+  if (address.toLowerCase().startsWith(name.toLowerCase())) {
+    return address;
+  }
+
+  // Append a single concise context fragment (zone/city) when available.
+  const context = extractContext(place.address_components);
+  return context ? `${name}; ${context}` : name;
+}
+
 export default function DestinationForm({ onSubmit, isLoading }) {
   const [destinations, setDestinations] = useState([
     { id: 'dest-1', value: '', lat: null, lng: null },
@@ -16,8 +68,7 @@ export default function DestinationForm({ onSubmit, isLoading }) {
 
   const autocompleteRefs = useRef({});
 
-  // Clears validation feedback tied to a single destination (used when the
-  // user edits, picks a new place, or removes a flagged destination).
+  // Clears validation feedback tied to a single destination.
   const clearValidationFor = (id) => {
     setErrorMessage(null);
     setInvalidIds((prev) => {
@@ -61,7 +112,7 @@ export default function DestinationForm({ onSubmit, isLoading }) {
         setDestinations((prev) => prev.map((dest) =>
           dest.id === id ? {
             ...dest,
-            value: place.name || place.formatted_address,
+            value: buildLocationLabel(place),
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng()
           } : dest
@@ -109,6 +160,9 @@ export default function DestinationForm({ onSubmit, isLoading }) {
 
             return {
               ...dest,
+              // Keep the user's own text as the label; Google is only used to
+              // resolve coordinates here. This avoids replacing a typed name
+              // like "Cayalá" with a cryptic plus code / "Unnamed Road".
               lat: bestMatch.geometry.location.lat(),
               lng: bestMatch.geometry.location.lng()
             };
@@ -155,104 +209,77 @@ export default function DestinationForm({ onSubmit, isLoading }) {
   };
 
   return (
-    <div style={{ backgroundColor: '#f5f5f5', padding: '20px', borderRadius: '8px', width: '100%', boxSizing: 'border-box' }}>
-      <h2 style={{ marginTop: 0 }}>Plan Your Route</h2>
+    <form className="form" onSubmit={handleSubmit}>
+      <span className="form-title">Plan your route</span>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      {/* Route mode (closed / open) */}
+      <div className="segmented" role="radiogroup" aria-label="Route mode">
+        <label className="segmented__option">
+          <input
+            className="sr-only"
+            type="radio"
+            name="route-mode"
+            checked={isClosedRoute}
+            onChange={() => setIsClosedRoute(true)}
+          />
+          Closed route
+        </label>
+        <label className="segmented__option">
+          <input
+            className="sr-only"
+            type="radio"
+            name="route-mode"
+            checked={!isClosedRoute}
+            onChange={() => setIsClosedRoute(false)}
+          />
+          Open route
+        </label>
+      </div>
 
-        <div style={{ display: 'flex', gap: '15px', paddingBottom: '10px', borderBottom: '1px solid #ddd' }}>
-          <label>
+      {/* Validation feedback (geocoding failures or 100 km radius breaches) */}
+      {errorMessage && (
+        <div className="alert" role="alert">{errorMessage}</div>
+      )}
+
+      {destinations.map((dest, index) => (
+        <div key={dest.id} className="dest-row">
+          <Autocomplete
+            onLoad={(ref) => (autocompleteRefs.current[dest.id] = ref)}
+            onPlaceChanged={() => handlePlaceChanged(dest.id)}
+            options={{ componentRestrictions: { country: 'gt' } }}
+          >
             <input
-              type="radio"
-              checked={isClosedRoute}
-              onChange={() => setIsClosedRoute(true)}
-            /> Closed Route
-          </label>
-          <label>
-            <input
-              type="radio"
-              checked={!isClosedRoute}
-              onChange={() => setIsClosedRoute(false)}
-            /> Open Route
-          </label>
+              type="text"
+              className={`field${invalidIds.has(dest.id) ? ' field--invalid' : ''}`}
+              placeholder={`Destination ${index + 1}`}
+              value={dest.value}
+              onChange={(e) => handleChange(dest.id, e.target.value)}
+              required
+            />
+          </Autocomplete>
+
+          {destinations.length > 2 && (
+            <button
+              type="button"
+              className="btn-remove"
+              onClick={() => handleRemoveDestination(dest.id)}
+              aria-label={`Remove destination ${index + 1}`}
+            >
+              ×
+            </button>
+          )}
         </div>
+      ))}
 
-        {/* Validation feedback (geocoding failures or 100 km radius breaches) */}
-        {errorMessage && (
-          <div
-            role="alert"
-            style={{
-              padding: '10px 12px',
-              backgroundColor: '#fdecea',
-              border: '1px solid #f5c2c0',
-              borderRadius: '4px',
-              color: '#a4291f',
-              fontSize: '14px',
-              lineHeight: '1.4'
-            }}
-          >
-            {errorMessage}
-          </div>
-        )}
-
-        {destinations.map((dest, index) => {
-          const isInvalid = invalidIds.has(dest.id);
-          return (
-            <div key={dest.id} style={{ display: 'flex', gap: '10px' }}>
-              <div style={{ flex: 1 }}>
-                <Autocomplete
-                  onLoad={(ref) => (autocompleteRefs.current[dest.id] = ref)}
-                  onPlaceChanged={() => handlePlaceChanged(dest.id)}
-                  options={{ componentRestrictions: { country: 'gt' } }}
-                >
-                  <input
-                    type="text"
-                    placeholder={`Destination ${index + 1}`}
-                    value={dest.value}
-                    onChange={(e) => handleChange(dest.id, e.target.value)}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      boxSizing: 'border-box',
-                      border: isInvalid ? '2px solid #ff4d4d' : '1px solid #ccc',
-                      outline: 'none'
-                    }}
-                  />
-                </Autocomplete>
-              </div>
-
-              {destinations.length > 2 && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveDestination(dest.id)}
-                  style={{ padding: '8px', backgroundColor: '#ff4d4d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                >
-                  X
-                </button>
-              )}
-            </div>
-          );
-        })}
-
-        {destinations.length < 15 && (
-          <button
-            type="button"
-            onClick={handleAddDestination}
-            style={{ padding: '8px', backgroundColor: '#e0e0e0', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            + Add Destination
-          </button>
-        )}
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          style={{ padding: '12px', backgroundColor: '#006EAF', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '10px', fontSize: '16px' }}
-        >
-          {isLoading ? 'Calculating...' : 'Optimize Route'}
+      {destinations.length < 15 && (
+        <button type="button" className="btn-add" onClick={handleAddDestination}>
+          + Add destination
         </button>
-      </form>
-    </div>
+      )}
+
+      <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>
+        {isLoading ? 'Calculating…' : 'Optimize route'}
+      </button>
+    </form>
   );
 }
