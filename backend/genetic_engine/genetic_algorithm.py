@@ -77,7 +77,7 @@ def solve(
     best_overall_distance = float('inf')
     
     # 2. Evolution loop
-    for generation in range(generations):
+    for _ in range(generations):
         # Sort population by fitness (shorter distance is better)
         population.sort(key=lambda r: calculate_route_distance(r, distance_matrix, is_closed_route))
         
