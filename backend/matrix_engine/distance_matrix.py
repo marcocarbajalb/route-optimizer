@@ -31,7 +31,7 @@ def _request_block(
         "key": api_key,
     }
 
-    response = requests.get(_DISTANCE_MATRIX_URL, params=params)
+    response = requests.get(_DISTANCE_MATRIX_URL, params=params, timeout=(5, 30))
     response.raise_for_status()
     data = response.json()
 

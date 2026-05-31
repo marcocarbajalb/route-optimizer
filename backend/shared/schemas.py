@@ -1,5 +1,5 @@
 import math
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import List
 
 # =========================

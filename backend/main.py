@@ -5,6 +5,7 @@ destination coordinates and a calculation mode, runs the genetic
 algorithm, and returns the optimized route.
 """
 import json
+import logging
 
 from firebase_functions import https_fn, options
 from firebase_admin import initialize_app
@@ -58,8 +59,8 @@ def optimize(req: https_fn.Request) -> https_fn.Response:
     # 4. Request body validation via Pydantic
     try:
         body = req.get_json(silent=True)
-        if body is None:
-            raise ValueError("Request body must be valid JSON")
+        if not isinstance(body, dict):
+            raise ValueError("Request body must be a JSON object")
         request_data = OptimizationRequestSchema(**body)
     except (ValidationError, ValueError) as exc:
         return https_fn.Response(
@@ -72,8 +73,10 @@ def optimize(req: https_fn.Request) -> https_fn.Response:
     try:
         result = optimize_route(request_data)
     except Exception as exc:  # noqa: BLE001 - surface upstream API failures
+        # Log the real cause for debugging (visible in Cloud Logging), but never expose upstream/internal detail to the caller.
+        logging.exception("Optimization pipeline failed")
         return https_fn.Response(
-            json.dumps({"error": f"Optimization failed: {exc}"}),
+            json.dumps({"error": "Optimization failed due to an internal error"}),
             status=502,
             mimetype="application/json",
         )
