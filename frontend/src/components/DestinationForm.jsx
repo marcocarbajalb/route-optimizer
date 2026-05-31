@@ -2,6 +2,12 @@ import { useState, useRef } from 'react';
 import { Autocomplete } from '@react-google-maps/api';
 import { findDestinationsOverRadius, MAX_RADIUS_KM } from '../utils/distance';
 
+// Place fields requested from the Autocomplete. Restricting to exactly what we
+// use keeps responses light (faster, cheaper) and ensures address_components
+// is present so we can build a "Name; City/Zone" label. All four are Basic
+// Data fields, so this stays in the lowest Places billing tier.
+const AUTOCOMPLETE_FIELDS = ['name', 'formatted_address', 'geometry', 'address_components'];
+
 // Address component types that carry useful "city / zone" context, in order
 // of preference. We pick the first one present to keep the label concise.
 const CONTEXT_TYPES = [
@@ -246,6 +252,7 @@ export default function DestinationForm({ onSubmit, isLoading }) {
           <Autocomplete
             onLoad={(ref) => (autocompleteRefs.current[dest.id] = ref)}
             onPlaceChanged={() => handlePlaceChanged(dest.id)}
+            fields={AUTOCOMPLETE_FIELDS}
             options={{ componentRestrictions: { country: 'gt' } }}
           >
             <input

@@ -4,7 +4,6 @@ import { GoogleMap, DirectionsRenderer, Marker } from '@react-google-maps/api';
 const mapContainerStyle = {
   width: '100%',
   height: '100%',
-  borderRadius: '8px'
 };
 
 const defaultCenter = {
@@ -12,8 +11,9 @@ const defaultCenter = {
   lng: -90.4893
 };
 
-const COLOR_DEFAULT = '#EA4335';
-const COLOR_START_END = '#EA4335';
+// Orange pins (brand accent) over Google's native colored map.
+const COLOR_DEFAULT = '#ea580c';
+const COLOR_START_END = '#ea580c';
 
 // Builds an SVG teardrop pin icon with an embedded number label.
 // For closed-route origin pins, adds a divider and "S/E" subtitle
@@ -111,6 +111,10 @@ export default function MapComponent({ routeData, locations }) {
       options={{
         disableDefaultUI: true,
         zoomControl: true,
+        zoomControlOptions: {
+          position: window.google.maps.ControlPosition.RIGHT_BOTTOM,
+        },
+        clickableIcons: false,
       }}
     >
       {directions && (
@@ -120,9 +124,9 @@ export default function MapComponent({ routeData, locations }) {
             options={{
               suppressMarkers: true,
               polylineOptions: {
-                strokeColor: '#006EAF',
+                strokeColor: '#2f7dd1',
                 strokeWeight: 5,
-                strokeOpacity: 0.8,
+                strokeOpacity: 0.85,
               },
             }}
           />

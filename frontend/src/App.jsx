@@ -53,32 +53,32 @@ export default function App() {
     setIsCalculating(true);
     setRequestError(null);
 
+    // Build the payload for the Cloud Function
+    const payload = {
+      locations: formData.destinations.map((d) => ({
+        id: d.id,
+        name: d.value,
+        lat: d.lat,
+        lng: d.lng,
+      })),
+      config: {
+        is_closed_route: formData.isClosedRoute,
+      },
+    };
+
     try {
       // 1. Get the Firebase ID token from the current user
       const token = await user.getIdToken();
 
-      // 2. Build the payload for the Cloud Function
-      const payload = {
-        locations: formData.destinations.map((d) => ({
-          id: d.id,
-          name: d.value,
-          lat: d.lat,
-          lng: d.lng,
-        })),
-        config: {
-          is_closed_route: formData.isClosedRoute,
-        },
-      };
-
-      setSubmittedLocations(payload.locations);
-
-      // 3. Call the deployed Cloud Function via the service layer
+      // 2. Call the deployed Cloud Function via the service layer
       const data = await optimizeRoute(payload, token);
 
-      // 4. Save the result
+      // 3. Commit pins and route together, only after a successful run, so a
+      //    failed request (e.g. IP rejected) never paints stale pins on the map.
+      setSubmittedLocations(payload.locations);
       setRouteData(data);
     } catch (error) {
-      // A failed run must never leave a stale route or freshly-set pins on the map.
+      // A failed run must never leave a stale route or pins on the map.
       setRouteData(null);
       setSubmittedLocations([]);
       setRequestError(error.message);
@@ -88,11 +88,15 @@ export default function App() {
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
+    return <div className="screen-msg">Loading…</div>;
   }
 
   if (loadError) {
-    return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Error loading Google Maps. Check your API Key in the .env file.</div>;
+    return (
+      <div className="screen-msg is-error">
+        Error loading Google Maps. Check your API key in the .env file.
+      </div>
+    );
   }
 
   if (!user) {
@@ -100,91 +104,64 @@ export default function App() {
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1>Route Optimizer</h1>
-        <div>
-          <span style={{ marginRight: '15px' }}>{user.email}</span>
-          <button onClick={handleLogout} style={{ padding: '5px 10px', cursor: 'pointer' }}>
-            Logout
-          </button>
-        </div>
-      </header>
+    <div className="app">
+      {/* Full-screen map background */}
+      <div className="app-map">
+        {!isLoaded ? (
+          <div className="map-loading">Loading map…</div>
+        ) : (
+          <MapComponent routeData={routeData} locations={submittedLocations} />
+        )}
+      </div>
 
-      <main style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {/* User chip (top-right) */}
+      <div className="user-chip glass">
+        <span className="user-chip__email">{user.email}</span>
+        <button className="btn-icon" onClick={handleLogout} aria-label="Log out" title="Log out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+               strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+      </div>
 
-        {/* Left Column: Form and Results */}
-        <div style={{ flex: '0 0 380px', maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <DestinationForm
-            onSubmit={handleOptimizeRoute}
-            isLoading={isCalculating}
-          />
+      {/* Floating control panel (left) */}
+      <aside className="app-panel glass">
+        <header className="panel-brand">
+          <img src="/favicon.svg" className="brand-mark" alt="" />
+          <div>
+            <h1 className="brand-title">Route Optimizer</h1>
+            <p className="brand-sub">Genetic route planning</p>
+          </div>
+        </header>
 
-          {/* Request-level error (auth, IP, backend radius fallback, network) */}
-          {requestError && (
-            <div
-              role="alert"
-              style={{
-                padding: '10px 12px',
-                backgroundColor: '#fdecea',
-                border: '1px solid #f5c2c0',
-                borderRadius: '8px',
-                color: '#a4291f',
-                fontSize: '14px',
-                lineHeight: '1.4',
-                width: '100%',
-                boxSizing: 'border-box',
-              }}
-            >
-              {requestError}
-            </div>
-          )}
+        <DestinationForm onSubmit={handleOptimizeRoute} isLoading={isCalculating} />
 
-          {/* Render Route Details if available */}
-          {routeData && routeData.route && (
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#f0f8ff',
-              borderRadius: '8px',
-              border: '1px solid #cce5ff',
-              textAlign: 'left',
-              color: '#000',
-              maxHeight: '350px',
-              overflowY: 'auto',
-              boxSizing: 'border-box',
-              width: '100%'
-            }}>
-              <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Optimization Results</h3>
+        {/* Request-level error (auth, IP, backend radius fallback, network) */}
+        {requestError && (
+          <div className="alert" role="alert">{requestError}</div>
+        )}
 
-              <p style={{ fontWeight: 'bold', fontSize: '18px', margin: '0 0 15px 0' }}>
-                Total Distance: {routeData.route.total_distance_km} km
-              </p>
-
-              <ol style={{ paddingLeft: '20px', margin: 0, lineHeight: '1.6' }}>
-                {routeData.route.ordered_locations.map((locId, index) => {
-                  const loc = submittedLocations.find(l => l.id === locId);
-                  return (
-                    <li key={`${locId}-${index}`}>
-                      {loc ? loc.name : locId}
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Map */}
-        <div style={{ flex: '1', minWidth: '0', height: '600px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
-          {!isLoaded ? (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#eaeaea' }}>
-              Loading map...
-            </div>
-          ) : (
-            <MapComponent routeData={routeData} locations={submittedLocations} />
-          )}
-        </div>
-      </main>
+        {/* Optimization results */}
+        {routeData && routeData.route && (
+          <section className="result-card">
+            <h3 className="result-title">Optimized route</h3>
+            <p className="result-distance">
+              <span>{routeData.route.total_distance_km}</span> km total
+            </p>
+            <ol className="result-list">
+              {routeData.route.ordered_locations.map((locId, index) => {
+                const loc = submittedLocations.find((l) => l.id === locId);
+                return (
+                  <li key={`${locId}-${index}`}>{loc ? loc.name : locId}</li>
+                );
+              })}
+            </ol>
+          </section>
+        )}
+      </aside>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
 
@@ -19,10 +19,8 @@ export default function Login() {
 
     try {
       if (isRegistering) {
-        // Create a new user
         await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        // Sign in existing user
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err) {
@@ -33,47 +31,46 @@ export default function Login() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', fontFamily: 'sans-serif' }}>
-      <h2>{isRegistering ? 'Create Account' : 'Sign In'}</h2>
-      
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <input 
-          type="email" 
-          placeholder="Email" 
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ padding: '10px', fontSize: '16px' }}
-        />
-        <input 
-          type="password" 
-          placeholder="Password" 
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ padding: '10px', fontSize: '16px' }}
-        />
-        
-        {error && <p style={{ color: 'red', margin: '0' }}>{error}</p>}
-        
-        <button 
-          type="submit" 
-          disabled={loading}
-          style={{ padding: '10px', fontSize: '16px', cursor: 'pointer' }}
-        >
-          {loading ? 'Processing...' : (isRegistering ? 'Register' : 'Login')}
-        </button>
-      </form>
+    <div className="login-screen">
+      <div className="login-card glass">
+        <div className="login-head">
+          <img src="/favicon.svg" className="brand-mark" alt="" />
+          <h1>{isRegistering ? 'Create account' : 'Welcome back'}</h1>
+          <p>Sign in to plan optimized routes</p>
+        </div>
 
-      <p style={{ textAlign: 'center', marginTop: '20px' }}>
-        {isRegistering ? 'Already have an account? ' : "Don't have an account? "}
-        <button 
-          onClick={() => setIsRegistering(!isRegistering)}
-          style={{ background: 'none', border: 'none', color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
-        >
-          {isRegistering ? 'Sign In' : 'Register'}
-        </button>
-      </p>
+        <form className="form" onSubmit={handleSubmit}>
+          <input
+            type="email"
+            className="field"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            className="field"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          {error && <div className="alert" role="alert">{error}</div>}
+
+          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+            {loading ? 'Processing…' : (isRegistering ? 'Register' : 'Sign in')}
+          </button>
+        </form>
+
+        <p className="login-toggle">
+          {isRegistering ? 'Already have an account? ' : "Don't have an account? "}
+          <button type="button" onClick={() => setIsRegistering(!isRegistering)}>
+            {isRegistering ? 'Sign in' : 'Register'}
+          </button>
+        </p>
+      </div>
     </div>
   );
 }
