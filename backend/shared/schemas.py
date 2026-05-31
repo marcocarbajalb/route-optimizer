@@ -32,9 +32,7 @@ class LocationSchema(BaseModel):
 # OPTIMIZATION CONFIG
 # =========================
 class OptimizationConfigSchema(BaseModel):
-    population_size: int = Field(default=100, gt=0, le=10000, description="Genetic algorithm population size")
-    mutation_rate: float = Field(default=0.05, ge=0, le=1, description="Mutation probability")
-    generations: int = Field(default=500, gt=0, le=100000, description="Maximum algorithm iterations")
+    model_config = ConfigDict(extra="forbid")
     is_closed_route: bool = Field(default=True, description="True if route must return to origin")
 
 # =========================

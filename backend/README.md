@@ -70,8 +70,6 @@ backend/
 
 Each package directory also contains an empty `__init__.py`.
 
-> Note: a previous FastAPI-based version of this backend kept an `api/` package for HTTP routing. The current Cloud Function uses `main.py` as its only entry point and does not import `api/`, so that directory is dead code and can be removed along with the other cleanup. The same applies to any empty leftover module under `shared/`.
-
 ---
 
 ## Core Modules
@@ -110,14 +108,14 @@ The genetic algorithm, treating the route as a Traveling Salesman Problem.
 
 ### `services/optimization_service.py`
 
-`optimize_route(request)` is the orchestration layer between the engines. It extracts coordinates from the validated request, builds the distance matrix, runs the genetic algorithm with the configured hyperparameters, maps the resulting indices back to the original location IDs, and (for closed routes) appends the origin ID at the end of the list. It returns the response model.
+`optimize_route(request)` is the orchestration layer between the engines. It extracts coordinates from the validated request, builds the distance matrix, runs the genetic algorithm with the fixed backend hyperparameters, maps the resulting indices back to the original location IDs, and (for closed routes) appends the origin ID at the end of the list. It returns the response model.
 
 ### `shared/schemas.py`
 
 The Pydantic data contracts and validation, plus a Haversine helper.
 
 - `LocationSchema` — `id`, `lat` (−90…90), `lng` (−180…180).
-- `OptimizationConfigSchema` — `population_size`, `mutation_rate`, `generations`, `is_closed_route` (all with defaults; these are the genetic hyperparameters, fixed on the backend).
+- `OptimizationConfigSchema` — only `is_closed_route` (the route mode chosen by the user). The genetic hyperparameters (population size, generations, mutation rate) are fixed in `services/optimization_service.py` and are deliberately not part of the request contract, so a caller cannot influence the GA's runtime or cost. Unknown fields in `config` are rejected (`extra="forbid"`).
 - `OptimizationRequestSchema` — `locations` + `config`. Its validator enforces the 2–15 count, rejects duplicate IDs, and checks every pair of destinations against the 100 km limit using the Haversine formula (the authoritative server-side check).
 - `RouteSchema` / `OptimizationResponseSchema` — the response shape.
 

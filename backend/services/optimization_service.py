@@ -7,6 +7,12 @@ from shared.schemas import (
     RouteSchema
 )
 
+# Genetic algorithm hyperparameters — fixed on the backend.
+GA_POPULATION_SIZE = 100
+GA_GENERATIONS = 500
+GA_MUTATION_RATE = 0.05
+
+
 def optimize_route(request: OptimizationRequestSchema) -> OptimizationResponseSchema:
 
     coordinates = [
@@ -17,12 +23,12 @@ def optimize_route(request: OptimizationRequestSchema) -> OptimizationResponseSc
     # Build the real distance matrix from Google Maps API
     distance_matrix = build_distance_matrix(coordinates)
 
-    # Run the genetic algorithm
+    # Run the genetic algorithm with the fixed backend hyperparameters.
     best_route_indices, total_distance = solve(
         distance_matrix=distance_matrix,
-        population_size=request.config.population_size,
-        generations=request.config.generations,
-        mutation_rate=request.config.mutation_rate,
+        population_size=GA_POPULATION_SIZE,
+        generations=GA_GENERATIONS,
+        mutation_rate=GA_MUTATION_RATE,
         is_closed_route=request.config.is_closed_route
     )
 
