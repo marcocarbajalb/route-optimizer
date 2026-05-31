@@ -21,7 +21,7 @@ venv/
 env/
 
 # =========================
-# FASTAPI / UVICORN
+# LOGS
 # =========================
 
 *.log
@@ -59,8 +59,8 @@ htmlcov/
 # LOCK FILES
 # =========================
 
-# Mantén SOLO si quieren reproducibilidad exacta
-# Si sí quieren compartir versiones exactas:
+# uv.lock is committed on purpose, for reproducible installs — keep it tracked.
+# (Uncomment the line below only if you decide not to share exact versions.)
 # uv.lock
 
 # =========================
