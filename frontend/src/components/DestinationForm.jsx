@@ -60,7 +60,7 @@ function buildLocationLabel(place) {
   return context ? `${name}; ${context}` : name;
 }
 
-export default function DestinationForm({ onSubmit, isLoading }) {
+export default function DestinationForm({ onSubmit, onValidationError, isLoading }) {
   const [destinations, setDestinations] = useState([
     { id: 'dest-1', value: '', lat: null, lng: null },
     { id: 'dest-2', value: '', lat: null, lng: null }
@@ -189,10 +189,12 @@ export default function DestinationForm({ onSubmit, isLoading }) {
     // Persist resolved coordinates so we don't re-geocode on the next submit.
     setDestinations(resolvedDestinations);
 
-    // Abort on any geocoding failure.
+    // Abort on any geocoding failure. Clear the map so a stale route isn't
+    // left behind next to the new error message.
     if (failedIds.size > 0) {
       setInvalidIds(failedIds);
       setErrorMessage(`${errors.join(' ')} Please refine the highlighted destinations.`);
+      onValidationError?.();
       return;
     }
 
@@ -207,6 +209,7 @@ export default function DestinationForm({ onSubmit, isLoading }) {
           `${worstPair.distance.toFixed(1)} km apart, which exceeds the ` +
           `${MAX_RADIUS_KM} km limit. Adjust the highlighted destinations.`
       );
+      onValidationError?.();
       return;
     }
 

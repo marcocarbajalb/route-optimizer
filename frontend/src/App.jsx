@@ -21,6 +21,10 @@ export default function App() {
   const [submittedLocations, setSubmittedLocations] = useState([]);
   const [requestError, setRequestError] = useState(null);
 
+  // Bumping this key remounts DestinationForm, resetting its internal state
+  // (typed destinations, route mode) back to defaults — a soft "refresh".
+  const [formKey, setFormKey] = useState(0);
+
   // Load Google Maps script securely
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -44,6 +48,22 @@ export default function App() {
     } catch (error) {
       console.error("Error signing out: ", error);
     }
+  };
+
+  // Clears the map (route + pins) and any request-level error. Used both by the
+  // explicit reset button and when the form aborts on a validation error, so a
+  // stale route is never left on the map next to a fresh error message.
+  const clearMap = () => {
+    setRouteData(null);
+    setSubmittedLocations([]);
+    setRequestError(null);
+  };
+
+  // Clears the calculated route and resets the form to its initial state,
+  // without reloading the page.
+  const handleReset = () => {
+    clearMap();
+    setFormKey((k) => k + 1); // Remount DestinationForm with default fields.
   };
 
   // Handle the form submission and API call
@@ -137,7 +157,12 @@ export default function App() {
           </div>
         </header>
 
-        <DestinationForm onSubmit={handleOptimizeRoute} isLoading={isCalculating} />
+        <DestinationForm
+          key={formKey}
+          onSubmit={handleOptimizeRoute}
+          onValidationError={clearMap}
+          isLoading={isCalculating}
+        />
 
         {/* Request-level error (auth, IP, backend radius fallback, network) */}
         {requestError && (
@@ -160,6 +185,18 @@ export default function App() {
               })}
             </ol>
           </section>
+        )}
+
+        {/* Reset: only shown once a route has been calculated */}
+        {routeData && routeData.route && (
+          <button type="button" className="btn-reset" onClick={handleReset}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.7 3" />
+              <path d="M3 3v5h5" />
+            </svg>
+            Clear route
+          </button>
         )}
       </aside>
     </div>
